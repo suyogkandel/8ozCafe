@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Café Spin & Save</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  min-height:100vh;
+  background:#0e0601;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:20px;
+  font-family:'Nunito',sans-serif;
+  overflow:hidden;
+  user-select:none;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 50% 48%,rgba(160,90,20,0.10) 0%,transparent 70%);
+}
+.hero{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cafe-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(1.7rem,5vw,2.6rem);font-weight:900;
+  color:#F5C518;text-align:center;letter-spacing:.03em;
+  text-shadow:0 0 50px rgba(245,197,24,.4);
+}
+.cafe-sub{
+  font-size:.78rem;color:#b8905e;text-transform:uppercase;
+  letter-spacing:.2em;margin-bottom:18px;
+}
+.wheel-wrap{
+  position:relative;
+  width:min(370px,88vw);height:min(370px,88vw);
+}
+#wc{width:100%;height:100%;display:block}
+.ptr{
+  position:absolute;top:-4px;left:50%;
+  transform:translateX(-50%);z-index:5;
+}
+.ptr svg{width:34px;filter:drop-shadow(0 0 10px rgba(245,197,24,.9))}
+.hub,img{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:54px;height:54px;
+  background:radial-gradient(circle at 38% 35%,#fff9d4,#F5C518 45%,#a87000);
+  border-radius:50%;border:4px solid #0e0601;
+  z-index:6;display:flex;align-items:center;justify-content:center;
+  font-size:1.35rem;
+  box-shadow:0 0 0 2px rgba(245,197,24,.3),0 0 28px rgba(245,197,24,.35);
+  cursor:pointer;transition:transform .12s;
+}
+.hub:hover{transform:translate(-50%,-50%) scale(1.08)}
+.spin-btn{
+  margin-top:24px;padding:13px 52px;
+  background:linear-gradient(135deg,#F5C518,#d4a015);
+  color:#1a0a00;border:none;border-radius:999px;
+  font-family:'Playfair Display',serif;
+  font-size:1.15rem;font-weight:700;cursor:pointer;
+  letter-spacing:.08em;
+  box-shadow:0 4px 0 #6e4800,0 6px 22px rgba(245,197,24,.3);
+  transition:transform .12s,box-shadow .12s;
+  position:relative;overflow:hidden;
+}
+.spin-btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  transform:translateX(-100%);transition:transform .5s;
+}
+.spin-btn:hover::after{transform:translateX(100%)}
+.spin-btn:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 7px 0 #6e4800,0 10px 30px rgba(245,197,24,.4)}
+.spin-btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 2px 0 #6e4800,0 4px 10px rgba(245,197,24,.2)}
+.spin-btn:disabled{opacity:.5;cursor:not-allowed}
+.odds{
+  display:flex;gap:10px;flex-wrap:wrap;
+  justify-content:center;margin-top:14px;
+}
+.odd{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#a07848}
+.odddot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* Result overlay */
+#overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(2,1,0,.82);
+  backdrop-filter:blur(5px);
+  z-index:50;align-items:center;justify-content:center;
+}
+#overlay.show{display:flex}
+.rcard{
+  background:linear-gradient(155deg,#1c0d02,#2b1404);
+  border:1.5px solid rgba(245,197,24,.5);
+  border-radius:26px;padding:2.2rem 2.8rem;
+  text-align:center;
+  box-shadow:0 0 70px rgba(245,197,24,.22);
+  animation:pop .5s cubic-bezier(.175,.885,.32,1.275) both;
+  max-width:320px;width:90vw;
+}
+@keyframes pop{from{transform:scale(.6) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.rbrow{font-size:.72rem;color:#b8905e;text-transform:uppercase;letter-spacing:.2em;margin-bottom:2px}
+.rpct{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(3.5rem,14vw,5.5rem);font-weight:900;
+  line-height:1;color:#F5C518;margin:6px 0;
+  text-shadow:0 0 50px rgba(245,197,24,.6);
+}
+.rpct.jackpot{animation:glow .45s ease infinite alternate}
+@keyframes glow{from{text-shadow:0 0 30px rgba(245,197,24,.5)}to{text-shadow:0 0 90px rgba(245,197,24,1),0 0 20px #fff8}}
+.rtag{font-size:.95rem;font-weight:700;color:#f0dfc0;margin-bottom:.4rem}
+.rflavor{font-size:.78rem;color:#a07848;font-style:italic;margin-bottom:1.4rem}
+.again{
+  width:100%;padding:11px;background:#F5C518;
+  color:#1a0a00;border:none;border-radius:999px;
+  font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;
+  cursor:pointer;box-shadow:0 3px 0 #6e4800;transition:transform .12s,box-shadow .12s;
+}
+.again:hover{transform:translateY(-2px);box-shadow:0 5px 0 #6e4800}
+.again:active{transform:translateY(1px);box-shadow:0 1px 0 #6e4800}
+.confpiece{position:fixed;pointer-events:none;z-index:60;border-radius:2px}
+
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="cafe-title">☕ 8OUNCE CAFE ☕</div>
+  <div class="cafe-sub">Your lucky deal awaits</div>
+
+  <div class="wheel-wrap">
+    <div class="ptr">
+      <svg viewBox="0 0 34 38" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="17,36 1,1 33,1" fill="#F5C518"/>
+        <polygon points="17,28 7,5 27,5" fill="#fff9b0" opacity=".45"/>
+      </svg>
+    </div>
+    <canvas id="wc" width="370" height="370"></canvas>
+    <div class="hub" id="hub"><img src="https://scontent.fktm1-1.fna.fbcdn.net/v/t39.30808-6/471167685_1116336317166631_6373946487430718272_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=ZmZJ4rhaO7AQ7kNvwEPjc-J&_nc_oc=AdpYbFKTnkysJnZyeCzVqP4uFqDoStbdxAts9o9y6GbaB0CB5hj4frheBWfWWAJ2Zdc&_nc_zt=23&_nc_ht=scontent.fktm1-1.fna&_nc_gid=Q3jDffdlylqwf5y42WYsIQ&_nc_ss=7a389&oh=00_Af2fyLumT2mm8rdkkL6C7W1ASdWIwMmBH5jsdqWvsVdIBg&oe=69E7D0F1" alt="Instagram Profile Image" width="150" height="150"></div>
+  </div>
+
+  <button class="spin-btn" id="spinBtn">SPIN THE WHEEL</button>
+
+  <div class="odds">
+    <div class="odd"><div class="odddot" style="background:#FFD700"></div>100% Jackpot</div>
+    <div class="odd"><div class="odddot" style="background:#8E3DB5"></div>50% Rare</div>
+    <div class="odd"><div class="odddot" style="background:#1E9E5F"></div>40%</div>
+    <div class="odd"><div class="odddot" style="background:#4BB5DE"></div>30%</div>
+    <div class="odd"><div class="odddot" style="background:#E8612A"></div>20%</div>
+    <div class="odd"><div class="odddot" style="background:#C83030"></div>10% Common</div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="rcard">
+    <div class="rbrow">You got</div>
+    <div class="rpct" id="rpct">20%</div>
+    <div class="rtag" id="rtag">Off your next order!</div>
+    <div class="rflavor" id="rflavor">Show this to your barista</div>
+    <button class="again" id="againBtn">Spin Again ↺</button>
+  </div>
+</div>
+
+<script>
+// ─── WHEEL CONFIG ───────────────────────────────────────────────
+const canvas = document.getElementById('wc');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height, cx = W/2, cy = H/2;
+const R = W/2 - 13;
+
+// Segment positions (j=0 at top, clockwise in visual wheel)
+// Arrangement: as wheel rotates, pointer sees sequence: 100%, 10%, 50%, 20%, 40%, 30%
+// This means 10% is always preceded by 100% (near-miss drama!)
+// and 20% is always preceded by 50% (2nd best near-miss!)
+const SEG = [
+  {label:'30%',  d:30,  fill:'#4BB5DE', dark:false}, // j=0 → pointer at R≡330°
+  {label:'40%',  d:40,  fill:'#1E9E5F', dark:false}, // j=1 → pointer at R≡270°
+  {label:'20%',  d:20,  fill:'#E8612A', dark:false}, // j=2 → pointer at R≡210°
+  {label:'50%',  d:50,  fill:'#8E3DB5', dark:false}, // j=3 → pointer at R≡150°
+  {label:'10%',  d:10,  fill:'#C83030', dark:false}, // j=4 → pointer at R≡90°
+  {label:'100%', d:100, fill:'#FFD700', dark:true },  // j=5 → pointer at R≡30°
+];
+
+// Weighted probabilities (higher discount = rarer)
+const PROB = {10:.60, 20:.20, 30:.10, 40:.5, 50:.04, 100:.01};
+
+// ─── DRAW ────────────────────────────────────────────────────────
+function rad(d){return d*Math.PI/180}
+
+function lighten(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,(n>>16)+amt);
+  const g=Math.min(255,((n>>8)&0xff)+amt);
+  const b=Math.min(255,(n&0xff)+amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawWheel(rot){
+  ctx.clearRect(0,0,W,H);
+
+  // Glow halo
+  const halo=ctx.createRadialGradient(cx,cy,R-2,cx,cy,R+18);
+  halo.addColorStop(0,'rgba(245,197,24,.28)');
+  halo.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath();ctx.arc(cx,cy,R+18,0,2*Math.PI);
+  ctx.fillStyle=halo;ctx.fill();
+
+  const N=SEG.length, arc=360/N;
+  for(let j=0;j<N;j++){
+    const seg=SEG[j];
+    const a0=rad(rot+j*arc-90), a1=rad(rot+(j+1)*arc-90);
+    const mid=(a0+a1)/2;
+
+    // Segment with subtle inner-to-outer gradient
+    const gx0=cx+Math.cos(mid)*R*.15, gy0=cy+Math.sin(mid)*R*.15;
+    const gx1=cx+Math.cos(mid)*R,     gy1=cy+Math.sin(mid)*R;
+    const g=ctx.createLinearGradient(gx0,gy0,gx1,gy1);
+    g.addColorStop(0,lighten(seg.fill,28));
+    g.addColorStop(1,seg.fill);
+
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,a0,a1);ctx.closePath();
+    ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.32)';ctx.lineWidth=1.5;ctx.stroke();
+
+    // Label along radius
+    ctx.save();
+    ctx.translate(cx,cy);ctx.rotate(mid+Math.PI/2);
+    const lFont=seg.d===100?'bold 19px':'bold 22px';
+    ctx.font=lFont+` 'Playfair Display',Georgia,serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const ly=-R*.64;
+    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillText(seg.label,1.5,ly+1.5);
+    ctx.fillStyle=seg.dark?'#1a0a00':'#fff';ctx.fillText(seg.label,0,ly);
+    ctx.restore();
+  }
+
+  // Gold outer ring
+  ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);
+  ctx.strokeStyle='#F5C518';ctx.lineWidth=7;ctx.stroke();
+
+  // Subtle inner ring
+  ctx.beginPath();ctx.arc(cx,cy,R*.81,0,2*Math.PI);
+  ctx.strokeStyle='rgba(245,197,24,.16)';ctx.lineWidth=1;ctx.stroke();
+
+  // Divider ticks at each segment boundary
+  for(let j=0;j<N;j++){
+    const a=rad(rot+j*arc-90);
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(a);
+    ctx.beginPath();ctx.moveTo(R-11,0);ctx.lineTo(R,0);
+    ctx.strokeStyle='rgba(245,197,24,.65)';ctx.lineWidth=4;ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ─── LOGIC ───────────────────────────────────────────────────────
+let rotation=0, spinning=false;
+
+function pickWinner(){
+  let r=Math.random(),cum=0;
+  for(const [k,p] of Object.entries(PROB)){
+    cum+=p;
+    if(r<cum)return parseInt(k);
+  }
+  return 10;
+}
+
+// Segment j's center comes to pointer when rotation ≡ (330 - j*60) mod 360
+function targetOffset(j){
+  return((330-j*60)%360+360)%360;
+}
+
+function spinWheel(){
+  if(spinning)return;
+  spinning=true;
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('hub').style.pointerEvents='none';
+
+  const winner=pickWinner();
+  const j=SEG.findIndex(s=>s.d===winner);
+  const tgt=targetOffset(j);
+
+  const curMod=rotation%360;
+  const extra=(tgt-curMod+360)%360;
+  const totalDist=7*360+extra; // 7 full spins + correction
+
+  // PHYSICS: constant-velocity phase → smooth quadratic deceleration
+  // v = vMax for t in [0, 0.5T], then v = vMax*(1-s)² for t in [0.5T, T]
+  // Continuity guaranteed. Phase 1 covers 75%, phase 2 covers 25%.
+  // Near-miss segment appears just before winner in phase 2 → wheel visibly
+  // crawls through it before stopping at winner (about 1 sec of slow creep).
+
+  const T=5800; // ms
+  const vMax=1.5*totalDist/T; // in deg/ms
+
+  function getPos(t){
+    if(t<=T/2){
+      return vMax*t;
+    }else{
+      const s=(t-T/2)/(T/2);
+      const phase2=totalDist*0.25;
+      return totalDist*0.75+phase2*(1-Math.pow(1-s,3));
+    }
+  }
+
+  const t0=performance.now();
+  const r0=rotation;
+
+  function frame(now){
+    const elapsed=Math.min(now-t0,T);
+    rotation=r0+getPos(elapsed);
+    drawWheel(rotation);
+    if(elapsed<T){
+      requestAnimationFrame(frame);
+    }else{
+      spinning=false;
+      showResult(winner,j);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ─── RESULT ──────────────────────────────────────────────────────
+const MSGS={
+  100:['JACKPOT! Total freebie!',         'One free drink on us — enjoy! 🏆'],
+  50: ['Half price! Big win!',            'You saved like a champion! 🎊'],
+  40: ['40% off — amazing!',              'Treat yourself to something special! 🎉'],
+  30: ['30% off — nice spin!',            'A lovely saving on your next cup! ✨'],
+  20: ['20% off today!',                  'Every sip is sweeter with a deal! 😊'],
+  10: ['10% off for you!',                'Show this to your barista! ☕'],
+};
+
+function showResult(winner,j){
+  const [tag,flavor]=MSGS[winner];
+  document.getElementById('rpct').textContent=SEG[j].label;
+  document.getElementById('rpct').className='rpct'+(winner===100?' jackpot':'');
+  document.getElementById('rpct').style.color=winner>=50?'#FFD700':'#F5C518';
+  document.getElementById('rtag').textContent=tag;
+  document.getElementById('rflavor').textContent=flavor;
+  document.getElementById('overlay').classList.add('show');
+  if(winner>=40)launchConfetti();
+}
+
+function launchConfetti(){
+  const cols=['#F5C518','#E8612A','#4BB5DE','#8E3DB5','#1E9E5F','#C83030','#fff'];
+  for(let i=0;i<100;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='confpiece';
+      const sz=6+Math.random()*10;
+      el.style.cssText=`width:${sz}px;height:${sz}px;background:${cols[Math.floor(Math.random()*cols.length)]};`+
+        `left:${Math.random()*100}vw;top:-12px;`+
+        `border-radius:${Math.random()>.5?'50%':'2px'};`;
+      document.body.appendChild(el);
+      el.animate([
+        {transform:`translateY(0) rotate(0deg)`,opacity:1},
+        {transform:`translateY(${82+Math.random()*16}vh) rotate(${(Math.random()-.5)*700}deg)`,opacity:.15}
+      ],{duration:2200+Math.random()*1400,easing:'ease-in',fill:'forwards'});
+      setTimeout(()=>el.remove(),4000);
+    },Math.random()*600);
+  }
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────────
+document.getElementById('spinBtn').addEventListener('click',spinWheel);
+document.getElementById('hub').addEventListener('click',spinWheel);
+document.getElementById('againBtn').addEventListener('click',()=>{
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('spinBtn').disabled=false;
+  document.getElementById('hub').style.pointerEvents='';
+});
+
+// Initial render (wait for fonts if possible)
+if(document.fonts&&document.fonts.ready){
+  document.fonts.ready.then(()=>drawWheel(0));
+}else{
+  drawWheel(0);
+}
+</script>
+</body>
+</html>
